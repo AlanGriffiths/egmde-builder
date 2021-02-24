@@ -1,0 +1,126 @@
+name: egmde-builder
+summary: A minimal development environment for egmde
+description: A minimal development environment for egmde
+confinement: strict
+grade: devel
+base: core20
+version: "0.1"
+
+architectures:
+  - build-on: amd64
+
+plugs:
+  # For Mir server to work
+  opengl:
+  network-bind:
+  x11:
+
+environment:
+  SHELL: bash
+  LC_ALL: C.UTF-8
+  HOME:  $SNAP_USER_COMMON
+#  LD_LIBRARY_PATH: ${SNAP}/usr/lib/:${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}
+  PATH: $SNAP/bin/:$SNAP/usr/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  # XDG config
+  XDG_CACHE_HOME:  $SNAP_USER_COMMON/.cache
+  XDG_CONFIG_DIRS: ${SNAP}/etc/xdg:$XDG_CONFIG_DIRS
+  # Prep for Qt wayland
+  QT_PLUGIN_PATH: ${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/qt5/plugins/
+  QT_QPA_PLATFORM_PLUGIN_PATH: ${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/qt5/plugins/platforms/
+  QML2_IMPORT_PATH: ${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/qt5/qml
+  QTCHOOSER_NO_GLOBAL_DIR: 1
+  QT_SELECT: snappy-qt5
+  C_INCLUDE_PATH:     $SNAP/usr/include:$SNAP/usr/include/$SNAPCRAFT_ARCH_TRIPLET
+  CPLUS_INCLUDE_PATH: $SNAP/usr/include:$SNAP/usr/include/$SNAPCRAFT_ARCH_TRIPLET
+  GCC_EXEC_PREFIX: $SNAP/usr/lib/gcc/
+  LIBRARY_PATH:    /lib:/lib/$SNAPCRAFT_ARCH_TRIPLET/:/usr/lib:/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/:$SNAP/lib:$SNAP/lib/$SNAPCRAFT_ARCH_TRIPLET/:$SNAP/usr/lib:$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/
+  PKG_CONFIG_PATH: $SNAP/usr/lib/x86_64-linux-gnu/pkgconfig/:$SNAP/usr/lib/x86_64-linux-gnu/pkgconfig:$SNAP/usr/share/pkgconfig
+
+layout:
+  /usr/share/git-core:
+    bind: $SNAP/usr/share/git-core
+  /usr/lib/git-core:
+    bind: $SNAP/usr/lib/git-core
+  /usr/share/X11/xkb:
+    bind: $SNAP/usr/share/X11/xkb
+  /usr/share/fonts/truetype/freefont:
+    bind: $SNAP/usr/share/fonts/truetype/freefont
+  /usr/share/glvnd:
+    bind: $SNAP/usr/share/glvnd
+  /etc/glvnd:
+    bind: $SNAP/etc/glvnd
+  /etc/fonts:
+    bind: $SNAP/etc/fonts
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libpthread_nonshared.a:
+    bind-file: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libpthread_nonshared.a
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libmvec_nonshared.a:
+    bind-file: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libmvec_nonshared.a
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libc_nonshared.a:
+    bind-file: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libc_nonshared.a
+  # Mir's cmake has a hard-coded path to this file
+  /usr/include/EGL/eglplatform.h:
+    bind-file: $SNAP/usr/include/EGL/eglplatform.h
+  /usr/local:
+    bind: $SNAP
+
+apps:
+  egmde-builder:
+    command-chain:
+      - gohome
+    command: bin/bash -i
+
+parts:
+  toolchain:
+    plugin: nil
+    stage-packages:
+      - vim
+      - devscripts
+      - equivs
+      - git
+      - g++
+      - gdb
+      - strace
+      - bash
+      - cmake
+      - cmake-extras
+      - debhelper
+      - pkg-config
+    override-build: |
+      snapcraftctl build
+      # create symlink that normally comes from update-alternatives
+      cd $SNAPCRAFT_PART_INSTALL/usr/bin
+      ln -sf gcc cc
+
+  egmde-deps:
+    plugin: nil
+    stage-packages:
+      - libboost-filesystem-dev
+      - libfreetype6-dev
+      - libmiral-dev
+      - libwayland-dev
+      - libstdc++-9-dev
+    override-prime: |
+      snapcraftctl prime
+      # fixup the .pc files
+      sed -i 's!/root/stage!/snap/egmde-builder/current!' $SNAPCRAFT_PRIME/usr/share/pkgconfig/*.pc $SNAPCRAFT_PRIME/usr/lib/x86_64-linux-gnu/pkgconfig/*.pc
+      sed -i 's!/usr/lib/x86_64-linux-gnu!/snap/egmde-builder/current/usr/lib/x86_64-linux-gnu!' $SNAPCRAFT_PRIME/usr/share/pkgconfig/*.pc $SNAPCRAFT_PRIME/usr/lib/x86_64-linux-gnu/pkgconfig/*.pc
+      sed -i 's!/usr/include!/snap/egmde-builder/current/usr/include!' $SNAPCRAFT_PRIME/usr/share/pkgconfig/*.pc $SNAPCRAFT_PRIME/usr/lib/x86_64-linux-gnu/pkgconfig/*.pc
+
+  misc:
+    plugin: nil
+    stage-packages:
+      - dmz-cursor-theme
+      - libgl1-mesa-dri
+      - libxcb1
+      - libpulse0
+      - libsndfile1
+      - libasyncns0
+      - liblua5.2-0
+      - libslang2
+      - libglu1-mesa
+      - libgpm2
+      - dbus
+
+  scripts:
+    plugin: dump
+    source: scripts

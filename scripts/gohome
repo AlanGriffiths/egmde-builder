@@ -1,0 +1,16 @@
+#!/bin/sh
+cd
+if [ ! -d egmde ]
+then
+  git clone https://github.com/AlanGriffiths/egmde
+fi
+
+if [ ! -d egmde/build ]
+then
+  mkdir egmde/build
+fi
+
+cd egmde/build
+cmake ..
+
+exec "$@"
